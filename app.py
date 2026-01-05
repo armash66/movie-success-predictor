@@ -11,40 +11,46 @@ st.set_page_config(
     layout="centered"
 )
 
-# ---------------- LOAD MODEL ----------------
-model = joblib.load("movie_success_model.pkl")
+# ---------------- SIDEBAR: MODEL SELECTION ----------------
+st.sidebar.subheader("🤖 Model Selection")
+
+model_choice = st.sidebar.selectbox(
+    "Choose a model",
+    ["XGBoost", "Random Forest", "Logistic Regression"]
+)
+
+# ---------------- LOAD MODEL (DYNAMIC) ----------------
+@st.cache_resource
+def load_model(choice):
+    if choice == "XGBoost":
+        return joblib.load("xgb_model.pkl")
+    elif choice == "Random Forest":
+        return joblib.load("rf_model.pkl")
+    else:
+        return joblib.load("logistic_model.pkl")
+
+model = load_model(model_choice)
 
 # ---------------- TITLE ----------------
 st.title("🎬 Movie Success Predictor")
 st.write(
     "Predict whether a movie will be successful using IMDb metadata, "
-    "an XGBoost model, and SHAP explainability."
+    "multiple ML models, and explainability."
 )
 
-# ---------------- SIDEBAR INPUTS ----------------
-st.sidebar.header("🎛 Movie Inputs")
+st.caption(f"🔍 Currently using: **{model_choice}**")
 
+# ---------------- SIDEBAR INPUTS ----------------
 runtime_minutes = st.sidebar.slider(
-    "Runtime (minutes)",
-    min_value=60,
-    max_value=240,
-    value=120
+    "Runtime (minutes)", 60, 240, 120
 )
 
 num_votes = st.sidebar.slider(
-    "Number of Votes",
-    min_value=0,
-    max_value=500000,
-    value=1000,
-    step=100
+    "Number of Votes", 0, 500000, 1000, step=100
 )
 
 average_rating = st.sidebar.slider(
-    "IMDb Rating",
-    min_value=0.0,
-    max_value=10.0,
-    value=7.0,
-    step=0.1
+    "IMDb Rating", 0.0, 10.0, 7.0, step=0.1
 )
 
 # ---------------- GENRE INPUTS ----------------
@@ -61,29 +67,31 @@ selected_genres = st.sidebar.multiselect(
     available_genres
 )
 
-# ---------------- FEATURE NAMES (ORDER MATTERS) ----------------
-feature_names = [
-    "Runtime",
-    "Votes",
-    "Rating",
+# ---------------- FEATURE ORDER (MUST MATCH TRAINING) ----------------
+FEATURE_COLUMNS = [
+    "runtimeMinutes",
+    "numVotes",
+    "averageRating",
     *available_genres
 ]
 
 # ---------------- PREDICTION ----------------
 if st.button("🎯 Predict Success"):
 
-    # Encode genres (must match training order)
-    genre_input = [1 if g in selected_genres else 0 for g in available_genres]
+    genre_features = {g: 0 for g in available_genres}
+    for g in selected_genres:
+        genre_features[g] = 1
 
-    X = np.array([[
-        runtime_minutes,
-        num_votes,
-        average_rating,
-        *genre_input
-    ]])
+    input_data = {
+        "runtimeMinutes": runtime_minutes,
+        "numVotes": num_votes,
+        "averageRating": average_rating,
+        **genre_features
+    }
 
-    # Predict probability
-    probability = model.predict_proba(X)[0][1]
+    input_df = pd.DataFrame([input_data], columns=FEATURE_COLUMNS)
+
+    probability = model.predict_proba(input_df)[0][1]
 
     # ---------------- RESULT UI ----------------
     st.subheader("📊 Prediction Result")
@@ -98,36 +106,50 @@ if st.button("🎯 Predict Success"):
     else:
         st.warning("❌ Low success potential")
 
+    if model_choice == "Logistic Regression":
+        st.info("Note: Logistic Regression is used as a baseline model.")
+
     # ---------------- SHAP EXPLANATION ----------------
-    st.subheader("🧠 Why this prediction? (SHAP Explanation)")
+    st.subheader("🧠 Why this prediction?")
 
-    explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(X)
+    if model_choice == "XGBoost":
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(input_df)
 
-    shap_df = pd.DataFrame({
-        "Feature": feature_names,
-        "Impact": shap_values[0]
-    }).sort_values(
-        by="Impact",
-        key=abs,
-        ascending=False
-    )
+    elif model_choice == "Random Forest":
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(input_df)
 
-    st.dataframe(shap_df)
+    else:
+        st.info("SHAP explanations are not shown for Logistic Regression.")
+        shap_values = None
 
-    # Optional visual chart
-    st.bar_chart(
-        shap_df.set_index("Feature")["Impact"]
-    )
+    if shap_values is not None:
+        shap_df = pd.DataFrame({
+            "Feature": FEATURE_COLUMNS,
+            "Impact": shap_values[0]
+        }).sort_values(by="Impact", key=abs, ascending=False)
 
-# ---------------- GLOBAL FEATURE IMPORTANCE ----------------
-st.subheader("🌍 Overall Feature Importance (Model-Level)")
+        st.dataframe(shap_df)
+        st.bar_chart(shap_df.set_index("Feature")["Impact"])
 
-importances = model.feature_importances_
+    # ---------------- OVERALL FEATURES ----------------
+st.subheader("🌍 Overall Feature Importance")
 
-importance_df = pd.DataFrame({
-    "Feature": feature_names,
-    "Importance": importances
-}).sort_values(by="Importance", ascending=False)
+if model_choice in ["XGBoost", "Random Forest"]:
+    importance_df = pd.DataFrame({
+        "Feature": FEATURE_COLUMNS,
+        "Importance": model.feature_importances_
+    }).sort_values(by="Importance", ascending=False)
 
-st.dataframe(importance_df)
+    st.dataframe(importance_df)
+
+elif model_choice == "Logistic Regression":
+    coef = model.named_steps["clf"].coef_[0]
+
+    importance_df = pd.DataFrame({
+        "Feature": FEATURE_COLUMNS,
+        "Coefficient": coef
+    }).sort_values(by="Coefficient", key=abs, ascending=False)
+
+    st.dataframe(importance_df)

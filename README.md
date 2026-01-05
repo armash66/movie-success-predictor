@@ -6,6 +6,18 @@ It is an **end-to-end data science project** that includes data preprocessing, f
 
 ---
 
+## 🧠 Models Used
+
+The project trains and evaluates multiple machine learning models:
+
+- **Logistic Regression** – baseline linear model
+- **Random Forest** – tree-based ensemble model
+- **XGBoost** – gradient boosting model (final selected model)
+
+Models are compared using **5-fold stratified cross-validation** based on F1 score.
+
+---
+
 ## 🎯 Objective
 To build a machine learning system that:
 - Works on real-world IMDb data
@@ -18,8 +30,8 @@ To build a machine learning system that:
 ## 📊 Dataset
 IMDb public datasets in **TSV format**:
 
-- `title.basics.tsv` – movie metadata (runtime, genres, title type)
-- `title.ratings.tsv` – IMDb ratings and vote counts
+- `title_basics.tsv` – movie metadata (runtime, genres, title type)
+- `title_ratings.tsv` – IMDb ratings and vote counts
 
 The original dataset contains millions of records.  
 A random sample is used during training for performance reasons.
@@ -55,11 +67,26 @@ Otherwise, it is labeled as **not successful (0)**.
 ---
 
 ## 🤖 Model
+
+### Logistic Regression Classifier
+Logistic Regression was chosen because:
+- It serves as a simple and interpretable baseline
+- Helps compare performance against more complex models
+- Performs well on linearly separable data
+- Makes model behavior easy to understand
+
 ### XGBoost Classifier
 XGBoost was chosen because:
 - It captures non-linear relationships
 - Performs well on imbalanced datasets
 - Is widely used in industry
+- Provides feature importance scores
+
+### Random Forest Classifier
+Random Forest was chosen because:
+- It captures non-linear relationships in the data
+- Is robust to noise and reduces overfitting
+- Works well with mixed numerical and categorical features
 - Provides feature importance scores
 
 ### Class Imbalance Handling
@@ -92,9 +119,11 @@ movies/
 │
 ├── main.py # Model training (XGBoost)
 ├── app.py # Streamlit web application
-├── movie_success_model.pkl # Trained model
-├── title.basics.tsv # IMDb dataset
-├── title.ratings.tsv # IMDb dataset
+├── logistic_model.pkl # Trained model
+├── rf_model.pkl # Trained model
+├── xgb_model.pkl # Trained model
+├── title_basics.tsv # IMDb dataset
+├── title_ratings.tsv # IMDb dataset
 ├── requirements.txt # Dependencies
 └── README.md # Project documentation
 
@@ -115,7 +144,9 @@ movies/
     python main.py
 
     This generates the trained model file:
-    movie_success_model.pkl
+    logistic_model.pkl
+    rf_model.pkl
+    xgb_model.pkl
 
 3️⃣ Run the Web Application
 
