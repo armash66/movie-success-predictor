@@ -1,9 +1,53 @@
+# =========================
+# Python
+# =========================
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.env
+.venv/
+venv/
+
+# =========================
+# Jupyter / Experiments
+# =========================
 .ipynb_checkpoints/
 
-# Ignore large data
-*.zip
-*.tsv
-*.pkl
-*.joblib
+# =========================
+# ML Artifacts (DO NOT PUSH)
+# =========================
+models/*.pkl
+models/*.joblib
+models/*.json
+feature_store/*.parquet
+
+# =========================
+# Raw & Intermediate Data
+# =========================
+datasets/
+
+# =========================
+# Logs & Outputs
+# =========================
+logs/
+*.log
+
+# =========================
+# Streamlit
+# =========================
+.streamlit/
+
+# =========================
+# OS / Editor Noise
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# =========================
+# Build / Cache
+# =========================
+.cache/
