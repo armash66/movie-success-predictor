@@ -1,164 +1,238 @@
-# 🎬 Movie Success Prediction using XGBoost & SHAP
+🎬 Movie Success Prediction System
 
-## 📌 Overview
-This project predicts whether a movie will be **successful** based on IMDb metadata such as runtime, ratings, number of votes, and genres.  
-It is an **end-to-end data science project** that includes data preprocessing, feature engineering, model training, explainability, and deployment using Streamlit.
+Production-grade ML + XAI Platform using IMDb Data
 
----
+A deployable, explainable machine learning system that predicts movie success using IMDb metadata, audience signals, and talent features — with smooth predictions, model switching, and trust awareness.
 
-## 🧠 Models Used
+🚀 Project Overview
 
-The project trains and evaluates multiple machine learning models:
+This project predicts whether a movie is likely to be successful and explains why — without unstable threshold behavior.
 
-- **Logistic Regression** – baseline linear model
-- **Random Forest** – tree-based ensemble model
-- **XGBoost** – gradient boosting model (final selected model)
+Instead of relying on a single binary model, the system separates:
 
-Models are compared using **5-fold stratified cross-validation** based on F1 score.
+Decision models (classification)
 
----
+Reasoning models (regression)
 
-## 🎯 Objective
-To build a machine learning system that:
-- Works on real-world IMDb data
-- Predicts movie success accurately
-- Explains predictions using interpretable ML techniques
-- Provides an interactive web interface
+Explanation models (XAI / SHAP)
 
----
+Trust signals (model disagreement & data quality)
 
-## 📊 Dataset
-IMDb public datasets in **TSV format**:
+This architecture avoids common pitfalls like probability snapping and misleading explanations.
 
-- `title_basics.tsv` – movie metadata (runtime, genres, title type)
-- `title_ratings.tsv` – IMDb ratings and vote counts
+🧠 Key Design Principles
+1️⃣ No Hard Prediction Jumps
 
-The original dataset contains millions of records.  
-A random sample is used during training for performance reasons.
+Binary classifiers tend to jump sharply near thresholds (e.g., rating 6.9 → 7.0).
 
----
+Solution:
 
-## 🧠 Feature Engineering
+Use a regression model for the main UI
 
-### Numerical Features
-- Runtime (minutes)
-- Average IMDb rating
-- Number of votes
+Use classifiers only when explicitly requested
 
-### Genre Features (One-Hot Encoded)
-- Action
-- Comedy
-- Drama
-- Romance
-- Thriller
-- Horror
-- Adventure
-- Crime
-- Sci-Fi
-- Fantasy
+2️⃣ Separation of Concerns (Critical)
 
-### Target Variable
-A movie is labeled as **successful (1)** if:
-- Average rating ≥ 7  
-- Number of votes ≥ 1000  
+Each model has a clear role:
 
-Otherwise, it is labeled as **not successful (0)**.
+Model	Purpose
+Logistic Regression	Interpretable baseline
+Random Forest	Non-linear baseline
+XGBoost Classifier	Binary decision model
+XGBoost Regressor	Smooth success score (primary UX)
 
----
+This prevents mixing incompatible outputs.
 
-## 🤖 Model
+3️⃣ Explainability Without Lying
 
-### Logistic Regression Classifier
-Logistic Regression was chosen because:
-- It serves as a simple and interpretable baseline
-- Helps compare performance against more complex models
-- Performs well on linearly separable data
-- Makes model behavior easy to understand
+Explanations are:
 
-### XGBoost Classifier
-XGBoost was chosen because:
-- It captures non-linear relationships
-- Performs well on imbalanced datasets
-- Is widely used in industry
-- Provides feature importance scores
+Local (one prediction at a time)
 
-### Random Forest Classifier
-Random Forest was chosen because:
-- It captures non-linear relationships in the data
-- Is robust to noise and reduces overfitting
-- Works well with mixed numerical and categorical features
-- Provides feature importance scores
+Model-driven (SHAP)
 
-### Class Imbalance Handling
-The `scale_pos_weight` parameter is used to balance successful and unsuccessful movies.
+Aligned with regression output
 
----
+No global SHAP misuse. No heuristic explanations pretending to be model logic.
 
-## 🔍 Explainability with SHAP
-SHAP (SHapley Additive exPlanations) is used to:
-- Explain individual predictions
-- Show how each feature contributes to success or failure
-- Provide transparent and interpretable results
+4️⃣ Trust Is Explicit
 
-Both **local explanations** (single prediction) and **global feature importance** are shown in the app.
+The system does not blindly trust one model.
 
----
+Instead, it:
 
-## 🌐 Web Application
-The Streamlit web app allows users to:
-- Adjust runtime, rating, and vote count
-- Select multiple genres
-- View success probability
-- Understand predictions using SHAP values
-- Explore overall feature importance
+Compares multiple classifiers
 
----
+Detects disagreement
 
-## 📁 Project Structure
-movies/
-│
-├── main.py # Model training (XGBoost)
-├── app.py # Streamlit web application
-├── logistic_model.pkl # Trained model
-├── rf_model.pkl # Trained model
-├── xgb_model.pkl # Trained model
-├── title_basics.tsv # IMDb dataset
-├── title_ratings.tsv # IMDb dataset
-├── requirements.txt # Dependencies
-└── README.md # Project documentation
+Flags low-confidence predictions
 
----
+Warns when data is insufficient
 
-▶️ How to Run
+📊 Data Sources
 
-1️⃣ Install Dependencies
+IMDb datasets (TSV format):
 
-    Ensure Python 3.9 or higher is installed.
-    Install all required libraries using:
+title_basics.tsv
 
-    pip install -r requirements.txt
+title_ratings.tsv
 
-2️⃣ Train the Model
+title_principals.tsv
 
-    Run the training script:
-    python main.py
+title_akas.tsv
 
-    This generates the trained model file:
-    logistic_model.pkl
-    rf_model.pkl
-    xgb_model.pkl
+Processed into a single feature store (~240k movies).
 
-3️⃣ Run the Web Application
+🧬 Feature Engineering
+Core Numeric
 
-    Start the Streamlit app:
-    streamlit run app.py
+runtimeMinutes
 
-    The application opens at:
-    http://localhost:8501
+numVotes
 
-4️⃣ Use the Application
+averageRating
 
-- Adjust runtime, rating, and number of votes
-- Select one or more genres
-- Click Predict Success
-- View success probability and SHAP explanations
+Genres (One-Hot)
+
+Action, Comedy, Drama, Romance, Thriller
+
+Horror, Adventure, Crime, Sci-Fi, Fantasy
+
+Talent & Crew
+
+num_cast
+
+num_lead_cast
+
+num_directors
+
+num_writers
+
+crew_size
+
+cast_to_crew_ratio
+
+Market Reach
+
+num_languages
+
+num_regions
+
+Business Signal
+
+is_franchise
+
+Feature schema is saved to:
+
+models/feature_schema.json
+
+🎯 Targets
+Binary Target (Decision)
+success = (averageRating ≥ 7) AND (numVotes ≥ 1000)
+
+
+Used only for classification models.
+
+Continuous Target (Smooth Reasoning)
+success_score = 0.7 * normalized_rating + 0.3 * normalized_votes
+
+
+Used for:
+
+Prediction UI
+
+What-If simulation
+
+XAI explanations
+
+🖥️ Application Architecture (Streamlit)
+app.py
+pages/
+ ├── 1_Prediction.py
+ ├── 2_What_If.py
+ └── 3_XAI.py
+models/
+feature_store/
+datasets/
+
+app.py
+
+Navigation only
+
+No ML logic
+
+🔮 Prediction Page
+
+Smooth Success Score (default, cliff-free)
+
+Classification mode with model switching
+
+SHAP-based explanations
+
+Trust & confidence warnings
+
+🔁 What-If Simulation
+
+Regressor-only
+
+Real-time sliders
+
+Delta-based impact
+
+No thresholds, no jumps
+
+🧠 XAI Page
+
+SHAP TreeExplainer
+
+Local explanation for one movie
+
+Top features helping vs hurting
+
+Full SHAP table (transparent)
+
+🛡️ Trust & Confidence Layer
+
+The system warns users when predictions are risky:
+
+Model disagreement
+
+Boundary proximity
+
+Low audience votes
+
+Limited regional or language reach
+
+Confidence levels:
+
+High
+
+Medium
+
+Low
+
+This makes the system honest and production-ready.
+
+⚙️ Model Switching (While Predicting)
+
+Users can explicitly choose:
+
+Prediction Type
+
+Smooth Success Score (recommended)
+
+Classification Probability
+
+Classification Models
+
+XGBoost
+
+Random Forest
+
+Logistic Regression
+
+No silent switching. No averaging incompatible models.
+
+🧪 How to Run
+pip install -r requirements.txt
+streamlit run app.py
